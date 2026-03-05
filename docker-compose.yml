@@ -1,0 +1,47 @@
+services:
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.5.4
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Force issuer URL so tokens match what Weaviate expects
+      KC_HOSTNAME_URL: "http://host.docker.internal:8081"
+      KC_HOSTNAME_ADMIN_URL: "http://host.docker.internal:8081"
+    ports:
+      - "127.0.0.1:8081:8080"
+
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.36.2
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      # OIDC / Keycloak authentication
+      AUTHENTICATION_OIDC_ENABLED: "true"
+      AUTHENTICATION_OIDC_ISSUER: "http://host.docker.internal:8081/realms/weaviate"
+      AUTHENTICATION_OIDC_CLIENT_ID: "weaviate"
+      AUTHENTICATION_OIDC_USERNAME_CLAIM: "preferred_username"
+      AUTHENTICATION_OIDC_GROUPS_CLAIM: "groups"
+      # Allow anonymous access (set to false to require auth for all requests)
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "false"
+      # RBAC Authorization (requires at least one root user)
+      AUTHORIZATION_RBAC_ENABLED: "true"
+      AUTHORIZATION_RBAC_ROOT_USERS: "admin-user"
+      # API KEY
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'root-user-key'
+      AUTHENTICATION_APIKEY_USERS: 'admin-user'
+      # Other settings
+      QUERY_DEFAULTS_LIMIT: "25"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    depends_on:
+      - keycloak
+
+volumes:
+  weaviate_data:
