@@ -11,6 +11,11 @@ services:
       KC_HOSTNAME_ADMIN_URL: "http://host.docker.internal:8081"
     ports:
       - "127.0.0.1:8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   weaviate:
     image: cr.weaviate.io/semitechnologies/weaviate:1.36.2
@@ -24,6 +29,7 @@ services:
       AUTHENTICATION_OIDC_CLIENT_ID: "weaviate"
       AUTHENTICATION_OIDC_USERNAME_CLAIM: "preferred_username"
       AUTHENTICATION_OIDC_GROUPS_CLAIM: "groups"
+      #AUTHENTICATION_OIDC_SKIP_CLIENT_ID_CHECK: "true"
       # Allow anonymous access (set to false to require auth for all requests)
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "false"
       # RBAC Authorization (requires at least one root user)
@@ -40,8 +46,9 @@ services:
       PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
     volumes:
       - weaviate_data:/var/lib/weaviate
-    depends_on:
+    depends_on: 
       - keycloak
+
 
 volumes:
   weaviate_data:
