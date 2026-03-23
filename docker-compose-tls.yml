@@ -3,12 +3,12 @@
 # Keycloak serves HTTPS on port 8443 using a self-signed certificate (generated
 # by certs/generate.sh). Weaviate trusts the CA via AUTHENTICATION_OIDC_CERTIFICATE.
 #
-# Usage (the CA PEM must be injected as a shell env var before calling compose):
+# Usage (inject the CA PEM before calling compose so it stays in sync with certs/):
 #
 #   export AUTHENTICATION_OIDC_CERTIFICATE=$(cat certs/ca.pem)
 #   docker compose -f docker-compose-tls.yml --project-name weaviate-tls up -d
 #
-# Or use the notebook cells in run.ipynb — they handle the env injection for you.
+# Or run via the notebook — the Step 2 cell handles the env injection automatically.
 
 services:
 
@@ -42,34 +42,33 @@ services:
       - "50051:50051"
     environment:
       # OIDC — issuer is HTTPS Keycloak
-      AUTHENTICATION_OIDC_ENABLED: "true"
-      AUTHENTICATION_OIDC_ISSUER: "https://host.docker.internal:8443/realms/weaviate"
-      AUTHENTICATION_OIDC_CLIENT_ID: "weaviate"
-      AUTHENTICATION_OIDC_USERNAME_CLAIM: "preferred_username"
-      AUTHENTICATION_OIDC_GROUPS_CLAIM: "groups"
-      # CA certificate for the self-signed Keycloak TLS cert.
-      # The PEM content is injected from the host shell at startup time:
-      #   export AUTHENTICATION_OIDC_CERTIFICATE=$(cat certs/ca.pem)
-      AUTHENTICATION_OIDC_CERTIFICATE: "${AUTHENTICATION_OIDC_CERTIFICATE}"
+      - AUTHENTICATION_OIDC_ENABLED=true
+      - AUTHENTICATION_OIDC_ISSUER=https://host.docker.internal:8443/realms/weaviate
+      - AUTHENTICATION_OIDC_CLIENT_ID=weaviate
+      - AUTHENTICATION_OIDC_USERNAME_CLAIM=preferred_username
+      - AUTHENTICATION_OIDC_GROUPS_CLAIM=groups
+      # CA certificate — list-form (no value) passes the host env var directly,
+      # bypassing YAML interpolation and preserving the newlines Weaviate needs.
+      - AUTHENTICATION_OIDC_CERTIFICATE
       # Alternative: skip TLS verification entirely (requires PR #10813 build).
-      # AUTHENTICATION_OIDC_SKIP_TLS_VERIFY: "true"
+      # - AUTHENTICATION_OIDC_SKIP_TLS_VERIFY=true
       # Auth
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "false"
-      AUTHORIZATION_RBAC_ENABLED: "true"
-      AUTHORIZATION_RBAC_ROOT_USERS: "admin-user"
-      AUTHENTICATION_APIKEY_ENABLED: "true"
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: "root-user-key"
-      AUTHENTICATION_APIKEY_USERS: "admin-user"
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=false
+      - AUTHORIZATION_RBAC_ENABLED=true
+      - AUTHORIZATION_RBAC_ROOT_USERS=admin-user
+      - AUTHENTICATION_APIKEY_ENABLED=true
+      - AUTHENTICATION_APIKEY_ALLOWED_KEYS=root-user-key
+      - AUTHENTICATION_APIKEY_USERS=admin-user
       # Other
-      QUERY_DEFAULTS_LIMIT: "25"
-      DEFAULT_VECTORIZER_MODULE: "none"
-      CLUSTER_HOSTNAME: "node1"
-      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      - QUERY_DEFAULTS_LIMIT=25
+      - DEFAULT_VECTORIZER_MODULE=none
+      - CLUSTER_HOSTNAME=node1
+      - PERSISTENCE_DATA_PATH=/var/lib/weaviate
     volumes:
       - weaviate_data_tls:/var/lib/weaviate
-    depends_on:
-      keycloak:
-        condition: service_healthy
+    # depends_on:
+    #   keycloak:
+    #     condition: service_healthy
 
 volumes:
   weaviate_data_tls:

@@ -15,6 +15,8 @@ openssl req -new -x509 -days 3650 \
     -key "$DIR/ca-key.pem" \
     -out "$DIR/ca.pem" \
     -subj "/CN=Weaviate Lab CA/O=Weaviate Lab" \
+    -addext "basicConstraints=critical,CA:TRUE" \
+    -addext "keyUsage=critical,keyCertSign,cRLSign" \
     2>/dev/null
 echo "    ca.pem created"
 

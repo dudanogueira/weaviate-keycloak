@@ -62,12 +62,14 @@ The server cert has SANs for `host.docker.internal`, `localhost`, and `127.0.0.1
 
 ### 2. Start the TLS stack
 
-The CA PEM must be injected into the shell so docker-compose can substitute `${AUTHENTICATION_OIDC_CERTIFICATE}`:
+The CA PEM must be injected so docker-compose can substitute `${AUTHENTICATION_OIDC_CERTIFICATE}`. This keeps the cert in sync every time Step 1 regenerates it:
 
 ```bash
 export AUTHENTICATION_OIDC_CERTIFICATE=$(cat certs/ca.pem)
 docker compose -f docker-compose-tls.yml --project-name weaviate-tls up -d
 ```
+
+> When running via the notebook, the Step 2 cell handles the env injection automatically — no manual export needed.
 
 Weaviate starts with:
 - `AUTHENTICATION_OIDC_ISSUER=https://host.docker.internal:8443/realms/weaviate`
