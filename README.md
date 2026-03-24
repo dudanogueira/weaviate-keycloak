@@ -1,6 +1,6 @@
 # Weaviate + Keycloak Lab
 
-A local lab for testing Weaviate OIDC authentication and RBAC with Keycloak 26, including a TLS variant that exercises `AUTHENTICATION_OIDC_CERTIFICATE` with a self-signed certificate.
+A local lab for testing Weaviate OIDC authentication and RBAC with Keycloak 26, including a TLS variant that exercises both `AUTHENTICATION_OIDC_CERTIFICATE` and `INSECURE_SKIP_OIDC_TLS_VERIFY` with a self-signed certificate.
 
 ## Services
 
@@ -41,7 +41,16 @@ docker compose up -d keycloak
 
 ## Quick start — HTTPS (self-signed certificate)
 
-This tests `AUTHENTICATION_OIDC_CERTIFICATE`, which lets Weaviate trust a custom CA when connecting to the OIDC provider over TLS.
+Two modes are available for trusting a self-signed Keycloak certificate:
+
+| Mode | Env var | Image requirement |
+|------|---------|-------------------|
+| **A** | `AUTHENTICATION_OIDC_CERTIFICATE=<PEM>` | Any stable release |
+| **B** | `INSECURE_SKIP_OIDC_TLS_VERIFY=true` | Preview build from [PR #10813](https://github.com/weaviate/weaviate/pull/10813) |
+
+`docker-compose-tls.yml` defaults to **Mode B**. To switch to Mode A, comment out `INSECURE_SKIP_OIDC_TLS_VERIFY` and uncomment `AUTHENTICATION_OIDC_CERTIFICATE` in the compose file.
+
+This section walks through **Mode A** (`AUTHENTICATION_OIDC_CERTIFICATE`), which works with any stable Weaviate release.
 
 ### 1. Generate certificates
 
@@ -89,7 +98,8 @@ Open `run.ipynb` and scroll to the **"TLS / Self-Signed Certificate Test"** sect
 | 6    | **Negative test** — confirms the cert is not trusted without the CA |
 | 7    | Fetches an OIDC token over HTTPS → passes it to Weaviate as a Bearer token |
 | 8    | Asserts RBAC still scopes `newuser` to `Special*` collections only |
-| 9    | Tears down the TLS stack |
+| 9    | Confirms Mode B (`INSECURE_SKIP_OIDC_TLS_VERIFY=true`) is active on the running container |
+| 10   | Tears down the TLS stack |
 
 ### 4. Tear down
 
@@ -113,12 +123,46 @@ The inline PEM format is what this lab uses. Weaviate builds a custom `http.Clie
 
 ---
 
-## Related PR
+## `INSECURE_SKIP_OIDC_TLS_VERIFY` — Mode B
 
-[weaviate#10813](https://github.com/weaviate/weaviate/pull/10813) adds `AUTHENTICATION_OIDC_SKIP_TLS_VERIFY=true` as an alternative when you cannot (or do not want to) supply the CA PEM. To test it, build Weaviate from that PR branch and uncomment this line in `docker-compose-tls.yml`:
+[weaviate#10813](https://github.com/weaviate/weaviate/pull/10813) adds `INSECURE_SKIP_OIDC_TLS_VERIFY=true` as an alternative to `AUTHENTICATION_OIDC_CERTIFICATE`. When set, Weaviate skips TLS certificate verification for all requests to the OIDC issuer (discovery, JWKS, token introspection).
+
+**This env var requires the preview image from that PR:**
+```
+semitechnologies/weaviate:preview-implements-insecure-skip-oidc-tls-verify-d0626f9.arm64
+```
+
+Once the PR merges, the feature ships in a stable release and any image will work.
+
+### How it differs from Mode A
+
+```
+Mode A — AUTHENTICATION_OIDC_CERTIFICATE
+  Weaviate builds a custom http.Client with the CA loaded into a x509.CertPool.
+  Keycloak's certificate is verified against that CA. Secure.
+
+Mode B — INSECURE_SKIP_OIDC_TLS_VERIFY
+  Weaviate sets InsecureSkipVerify=true on the TLS config.
+  No certificate verification at all. Simple, but vulnerable to MITM.
+```
+
+### When to use Mode B
+
+- Local dev / CI environments where managing and rotating a CA cert is impractical
+- Testing Weaviate OIDC flows behind an internal proxy with a corp cert
+- When you cannot (or do not want to) rebuild the container to inject a CA PEM
+
+**Do not use Mode B in production.**
+
+### Switching between modes in `docker-compose-tls.yml`
 
 ```yaml
-# AUTHENTICATION_OIDC_SKIP_TLS_VERIFY: "true"
+# Mode A (stable releases) — inject CA via env before running compose:
+#   export AUTHENTICATION_OIDC_CERTIFICATE=$(cat certs/ca.pem)
+# - AUTHENTICATION_OIDC_CERTIFICATE
+
+# Mode B (preview image only):
+- INSECURE_SKIP_OIDC_TLS_VERIFY=true
 ```
 
 ---
