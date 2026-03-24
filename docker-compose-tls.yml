@@ -36,7 +36,9 @@ services:
       retries: 12
 
   weaviate:
-    image: cr.weaviate.io/semitechnologies/weaviate:1.36.2
+    #image: cr.weaviate.io/semitechnologies/weaviate:1.36.2
+    image: semitechnologies/weaviate:preview-implements-insecure-skip-oidc-tls-verify-d0626f9.arm64
+
     ports:
       - "8080:8080"
       - "50051:50051"
@@ -47,11 +49,15 @@ services:
       - AUTHENTICATION_OIDC_CLIENT_ID=weaviate
       - AUTHENTICATION_OIDC_USERNAME_CLAIM=preferred_username
       - AUTHENTICATION_OIDC_GROUPS_CLAIM=groups
-      # CA certificate — list-form (no value) passes the host env var directly,
-      # bypassing YAML interpolation and preserving the newlines Weaviate needs.
-      - AUTHENTICATION_OIDC_CERTIFICATE
-      # Alternative: skip TLS verification entirely (requires PR #10813 build).
-      # - AUTHENTICATION_OIDC_SKIP_TLS_VERIFY=true
+      # Two modes for trusting Keycloak's self-signed cert — uncomment one:
+      #
+      # Mode A: provide the CA cert explicitly (works with stable Weaviate builds).
+      #   Requires the host env var to be set before calling compose:
+      #   export AUTHENTICATION_OIDC_CERTIFICATE=$(cat certs/ca.pem)
+      # - AUTHENTICATION_OIDC_CERTIFICATE
+      #
+      # Mode B: skip TLS verification entirely (requires the preview/PR build).
+      - INSECURE_SKIP_OIDC_TLS_VERIFY=true
       # Auth
       - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=false
       - AUTHORIZATION_RBAC_ENABLED=true
