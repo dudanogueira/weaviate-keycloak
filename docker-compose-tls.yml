@@ -37,7 +37,7 @@ services:
 
   weaviate:
     #image: cr.weaviate.io/semitechnologies/weaviate:1.36.2
-    image: semitechnologies/weaviate:preview-implements-insecure-skip-oidc-tls-verify-d0626f9.arm64
+    image: semitechnologies/weaviate:preview-implements-authentication-oidc-insecure-skip-tls-verify-eefbb78.arm64
 
     ports:
       - "8080:8080"
@@ -57,7 +57,7 @@ services:
       # - AUTHENTICATION_OIDC_CERTIFICATE
       #
       # Mode B: skip TLS verification entirely (requires the preview/PR build).
-      - INSECURE_SKIP_OIDC_TLS_VERIFY=true
+      - AUTHENTICATION_OIDC_INSECURE_SKIP_TLS_VERIFY=true
       # Auth
       - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=false
       - AUTHORIZATION_RBAC_ENABLED=true
